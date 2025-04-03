@@ -42,7 +42,7 @@ graph LR
 stepFunctions:
   stateMachines:
     ProcessingStepFunction:
-      name: ${self:service}-${opt:stage, 'dev'}
+      name: ${self:service}-${opt:stage, 'development'}
       definition:
         StartAt: BackgroundProcessing
         States:
@@ -82,7 +82,7 @@ functions:
     handler: handlers/background.handler
     timeout: 30
     environment:
-      NODE_ENV: ${opt:stage, 'dev'}
+      NODE_ENV: ${opt:stage, 'development'}
 ```
 
 ### 2. Function Flow
