@@ -1,0 +1,66 @@
+org: wbstech
+app: test
+service: test-background-script
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ${opt:region, 'eu-central-1'}
+  stage: ${opt:stage, 'development'}
+  timeout: 30
+  environment:
+    SLACK_WEBHOOK_URL: ${param:SLACK_WEBHOOK_URL}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - states:StartExecution
+          Resource:
+            - !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${self:service}-${self:provider.stage}
+
+functions:
+  initiateProcess:
+    handler: handlers/initiate.handler
+    events:
+      - httpApi:
+          path: /process-channels
+          method: GET
+    environment:
+      STATE_MACHINE_ARN: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${self:service}-${self:provider.stage}
+
+  backgroundTask:
+    handler: handlers/background.handler
+    timeout: 30
+    environment:
+      NODE_ENV: ${opt:stage, 'dev'}
+
+stepFunctions:
+  validate: true
+  stateMachines:
+    ProcessingStepFunction:
+      name: ${self:service}-${opt:stage, 'dev'}
+      definition:
+        StartAt: BackgroundProcessing
+        States:
+          BackgroundProcessing:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [BackgroundTaskLambdaFunction, Arn]
+            End: true
+
+plugins:
+  - serverless-step-functions
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3000
+    noPrependStageInUrl: true
+
+package:
+  patterns:
+    - "!.git/**"
+    - "!.vscode/**"
+    - "!test/**"
+    - "!README.md"
